@@ -1,21 +1,25 @@
 import java.util.*;
 
+/**
+ * TODO:
+ * Prompt user to hit or stay.
+ */
+
 public class Blackjack{
-  /*Global Variables*/
   public enum Suit{ SPADES, HEARTS, CLUBS, DIAMONDS }
   public enum Value{ ACE(1), TWO(2), THREE(3), FOUR(4), FIVE(5), SIX(6),
     SEVEN(7), EIGHT(8), NINE(9), TEN(10), JACK(10), QUEEN(10), KING(10);
-    private int weight;
+    public int weight;
     private Value(int weight){
       this.weight = weight;
     }
   }
-  private ArrayList<Card> _deck;
-  private ArrayList<Card> _discard;
-  private ArrayList<Card> _hand;
-  private ArrayList<Card> _dealer;
-  private int _handCount;
-  private int _dealerCount;
+  public enum Action{ HIT("hit"), STAY("stay");
+    public String action;
+    private Action(String action){
+      this.action = action;
+    }
+  }
   
   /**
    * Card objects are used to determine game progress.
@@ -30,6 +34,15 @@ public class Blackjack{
     }
   }
   
+  /*Global Variables*/
+  private ArrayList<Card> _deck; //an ordered collection of Cards
+  private ArrayList<Card> _discard; //Cards from previous hand go here
+  private ArrayList<Card> _hand; //your Cards
+  private ArrayList<Card> _dealer; //dealer's Cards
+  private int _handCount; // your card total
+  private int _dealerCount; //dealer's card total
+  
+  
   public Blackjack(){
     _deck = new ArrayList<Card>();
     for (Suit s : Suit.values()){
@@ -40,10 +53,46 @@ public class Blackjack{
     _discard = new ArrayList<Card>();
     _hand = new ArrayList<Card>();
     _dealer = new ArrayList<Card>();
+    _handCount = 0;
+    _dealerCount = 0;
   }
   
   public void shuffleDeck(){
     Collections.shuffle(_deck);
+  }
+  
+  public void hitMe(){
+    Card card = _deck.remove(0);
+    if(card.value == Value.ACE && _handCount + 11 <= 21){
+      card.value.weight = 11;
+    }
+    _hand.add(card);
+    _handCount += card.value.weight;
+    
+    if(checkCards()){
+      hitDealer();
+    }
+  }
+  
+  public void hitDealer(){
+    Card dealerCard = _deck.remove(0);
+    _dealer.add(dealerCard);
+    _dealerCount += dealerCard.value.weight;
+  }
+  
+  public boolean checkCards(){
+    return true;
+  }
+  
+  public void startRound(){
+    this.shuffleDeck();
+    this.hitMe();
+    this.hitMe();
+    this.printCount();
+  }
+  
+  public void printCount(){
+    System.out.println("Your count is: " + _handCount);
   }
   
   public static void welcomeMessage(){
@@ -53,17 +102,19 @@ public class Blackjack{
     System.out.println("| RULES:                                       |");
     System.out.println("| 1. Dealer draws to 16, and stands on all 17s |");
     System.out.println("| 2. Blackjack pays 3 to 2                     |");
-    //System.out.println("| 3. Maximum bet is 200                        |");
-    System.out.println("+----------------------------------------------+");
+    System.out.println("+----------------------------------------------+\n");
   }
   
   public static void main(String args[]){
+    Scanner sc = new Scanner(System.in);
     boolean playAgain = false;
     welcomeMessage();
-    while(playAgain){
+    
+    do{
       Blackjack game = new Blackjack();
-      game.shuffleDeck();
+      game.startRound();
+      //PROMPT FOR ACTION
       
-    }
+    }while(playAgain);
   }
 }
