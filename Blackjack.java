@@ -2,11 +2,13 @@ import java.util.*;
 
 /**
  * TODO:
- * Implement checkCards, checkBust, checkWin etc in main()....
+ * Create new file for Card class.
+ * Implement Card.equals().
+ * Add COMMENTS.
  */
 
 public class Blackjack{
-  public enum State{ HIT, STAY, BLACKJACK, WIN, LOSE, BUST, CONTINUE }
+  public enum State{ START, HIT, STAY, BLACKJACK, WIN, LOSE, BUST, CONTINUE }
   public enum Suit{ SPADES, HEARTS, CLUBS, DIAMONDS }
   public enum Value{ ACE(1), TWO(2), THREE(3), FOUR(4), FIVE(5), SIX(6),
     SEVEN(7), EIGHT(8), NINE(9), TEN(10), JACK(10), QUEEN(10), KING(10);
@@ -34,9 +36,10 @@ public class Blackjack{
   private ArrayList<Card> _discard; //Cards from previous hand go here
   private ArrayList<Card> _hand; //your Cards
   private ArrayList<Card> _dealer; //dealer's Cards
+  private Card _hiddenCard;
   private int _handCount; // your card total
   private int _dealerCount; //dealer's card total
-  private State _roundState;
+  private int _dealerShowing;
   
   /**
    * Initializes a game of blackjack.
@@ -55,17 +58,10 @@ public class Blackjack{
     _discard = new ArrayList<Card>();
     _hand = new ArrayList<Card>();
     _dealer = new ArrayList<Card>();
+    _hiddenCard = null;
     _handCount = 0;
     _dealerCount = 0;
-    _roundState = State.CONTINUE;
-  }
-  
-  /**
-   * Sets the current round's play state.
-   * @param state the new play state
-   */
-  public void changeRoundState(State state){
-    _roundState = state;
+    _dealerShowing = 0;
   }
   
   /**
@@ -86,8 +82,6 @@ public class Blackjack{
     }
     _hand.add(card);
     _handCount += card.value.weight;
-    
-    debug();
   }
   
   /**
@@ -100,7 +94,10 @@ public class Blackjack{
       card.value.weight = 11;
     }
     _dealer.add(card);
+    if(_dealer.size() == 1)
+      _hiddenCard = card;
     _dealerCount += card.value.weight;
+    _dealerShowing = _dealerCount - _hiddenCard.value.weight;
   }
   
   /**
@@ -111,18 +108,8 @@ public class Blackjack{
    * hand is checked in the same manner.
    * @return false if bust, true otherwise
    */
-  public boolean reduceWeights(){
-    if(_handCount > 21){
-      for(Card card : _hand){
-        if(card.value == Value.ACE && card.value.weight == 11 && _handCount > 21){
-          card.value.weight = 1;
-          _handCount -= 10;
-        }
-      }
-      if(_handCount > 21){
-        return false;
-      }
-    }else if(_dealerCount > 21){
+  public boolean checkDealer(){
+    if(_dealerCount > 21){
       for(Card card : _dealer){
         if(card.value == Value.ACE && card.value.weight == 11 && _dealerCount > 21){
           card.value.weight = 1;
@@ -136,34 +123,19 @@ public class Blackjack{
     return true;
   }
   
-  /**
-   * Checks if either hand has bust, and changes state if so.
-   * @return true if either hand has bust, false otherwise.
-   */
-  public boolean checkBust(){
+  public boolean checkMe(){
     if(_handCount > 21){
-      _roundState = State.BUST;
-      return true;
-    }else if(_dealerCount > 21){
-      _roundState = State.WIN;
-      return true;
-    }else{
-      return false;
+      for(Card card : _hand){
+        if(card.value == Value.ACE && card.value.weight == 11 && _handCount > 21){
+          card.value.weight = 1;
+          _handCount -= 10;
+        }
+      }
+      if(_handCount > 21){
+        return false;
+      }
     }
-  }
-  
-  public State checkWin(){
-    if(_dealerCount == 21 && _dealer.size() == 2){
-      return State.LOSE;
-    }else if(_handCount == 21 && _hand.size() == 2){
-      return State.BLACKJACK;
-    }else if(_handCount > 21){
-      return State.BUST;
-    }else if(_dealerCount > 21){
-      return State.WIN;
-    }else{
-      return State.STAY;
-    }
+    return true;
   }
   
   public void discard(){
@@ -181,8 +153,13 @@ public class Blackjack{
     _dealerCount = 0;
   }
   
-  public void printCount(){
-    System.out.println("Your count is: " + _handCount);
+  public void printMe(){
+    System.out.println("Dealer's showing " + _dealerShowing);
+    System.out.println("You're at " + _handCount);
+    for(Card card : _hand){
+      System.out.print(card.value + " of " + card.suit + ";  ");
+    }
+    System.out.println("\n");
   }
   
   public static void welcomeMessage(){
@@ -197,7 +174,6 @@ public class Blackjack{
   
   public void debug(){
     System.out.println("--- YOUR HAND ---");
-    printCount();
     for(Card card : _hand){
       System.out.print(card.value + " of " + card.suit + ";  ");
     }
@@ -213,45 +189,127 @@ public class Blackjack{
     System.out.println("\n\n");
   }
   
+  //used for dealer, which thinks independently of you
+  //returns WIN, LOSE, CONTINUE, or STAY
+  public State updateDealer(State current){
+    switch(current){
+      case START: // change to CONTINUE
+        return updateDealer(State.CONTINUE);
+      case CONTINUE: // decide to HIT or STAY
+        if(_dealerCount < 17 || _dealer.size() < 2){
+          return updateDealer(State.HIT);
+        }
+        return State.STAY;
+      case HIT: // take a card and return BLACKJACK, LOSE or CONTINUE
+        hitDealer();
+        if(_dealer.size() == 2 && _dealerCount == 21)
+          return updateDealer(State.BLACKJACK);
+        if(checkDealer()) // false if bust, true otherwise
+          return State.CONTINUE;
+        else
+          return State.LOSE;
+      case STAY: // check other state, return STAY, WIN, or LOSE
+        return State.STAY;
+      case BLACKJACK:
+        return State.WIN;
+      case LOSE: //do nothing
+        return State.LOSE;
+      case WIN: //do nothing
+        return State.WIN;
+      case BUST: //change state to
+        return State.LOSE;
+      default:
+        return State.CONTINUE;
+    }
+  }
+  
+  //used by you, because your state is affected by the dealer's
+  public State updateMe(State current, State dealer){
+    switch(current){
+      case START: // change to CONTINUE
+        return updateMe(State.CONTINUE, dealer);
+      case CONTINUE: // decide to HIT or STAY. if CONTINUE, and choose HIT, assume call hitMe() and change me to HIT
+        if(_hand.size() < 2){
+          hitMe();
+          return updateMe(current, dealer);
+        }
+        return State.CONTINUE;
+      case HIT: // take a card and return BUST or CONTINUE
+        if(_hand.size() == 2 && _handCount == 21)
+          return updateMe(State.BLACKJACK, dealer);
+        if(checkMe()) // false if bust, true otherwise
+          return State.CONTINUE;
+        else
+          return State.LOSE;
+      case STAY: // check other state, return STAY, WIN, or LOSE
+        if(dealer == State.WIN)
+          return State.LOSE;
+        else if(dealer == State.LOSE)
+          return State.WIN;
+        else if(dealer == State.STAY)
+          return _handCount > _dealerCount ? State.WIN : State.LOSE;
+        else
+          return State.STAY;
+      case LOSE: //do nothing
+        return State.LOSE;
+      case WIN: //do nothing
+        return State.WIN;
+      case BUST:
+        return State.LOSE;
+      case BLACKJACK:
+        return State.WIN;
+      default:
+        return State.CONTINUE;
+    }
+  }
+  
   public static void main(String args[]){
     Scanner scanner = new Scanner(System.in);
     String response;
-    State state;
-    State cardCheck;
-    boolean playAgain;
+    State me = State.START;
+    State dealer = State.START;
     welcomeMessage();
     
     Blackjack game = new Blackjack();
     game.shuffleDeck();
-    do{
-      playAgain = false;
-      game.hitMe();
-      game.hitDealer();
-      cardCheck = game.checkWin();
-      state = State.HIT;
-      while(state != State.STAY){
-        if(state == State.HIT){
-          game.hitMe();
-          game.printCount();
-        }
+    
+    while(me == State.START){
+      dealer = game.updateDealer(dealer);
+      me = game.updateMe(me, dealer);
+      
+      while(me == State.CONTINUE || me == State.STAY){
+        dealer = game.updateDealer(dealer);
+        me = game.updateMe(me, dealer);
+        game.printMe();
         
-        System.out.print("Would you like to hit? 'y' or 'n': ");
-        response = scanner.next().toLowerCase();
-        if(response.equals("y") || response.equals("yes")){
-          state = State.HIT;
-        }else if(response.equals("n") || response.equals("no")){
-          state = State.STAY;
-        }else{
-          state = State.CONTINUE;
+        if(me == State.CONTINUE){
+          System.out.print("Do you want to hit? 'yes' or 'no': ");
+          response = scanner.next().toLowerCase();
+          if(response.equals("y") || response.equals("yes")){
+            game.hitMe();
+            me = game.updateMe(State.HIT, dealer);
+          }
+          else{
+            me = game.updateMe(State.STAY, dealer);
+          }
         }
       }
+      
+      if(me == State.LOSE){
+        System.out.println("\nYou lost!\n");
+      }
+      else if(me == State.WIN){
+        System.out.println("\nYou won!\n");
+      }
+      game.debug();
       
       System.out.print("Do you want to play another round? ");
       response = scanner.next().toLowerCase();
       if(response.equals("y") || response.equals("yes")){
-        playAgain = true;
+        me = State.START;
+        dealer = State.START;
         game.discard();
       }
-    }while(playAgain);
+    }
   }
 }
