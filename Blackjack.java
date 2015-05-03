@@ -2,9 +2,9 @@ import java.util.*;
 
 /**
  * TODO:
- * Create new file for Card class.
- * Implement Card.equals().
- * Add COMMENTS.
+ * Add COMMENTS!
+ * Detailed win/lose stats.
+ * Add betting system.
  */
 
 public class Blackjack{
@@ -28,6 +28,15 @@ public class Blackjack{
     public Card(Value v, Suit s){
       this.suit = s;
       this.value = v;
+    }
+    @Override
+    public boolean equals(Object o){
+      if(o == this)  return true;
+      if(!(o instanceof Card))  return false;
+      Card c = (Card)o;
+      if(c.value != this.value) return false;
+      if(c.suit != this.suit)   return false;
+      return true;
     }
   }
   
@@ -151,11 +160,23 @@ public class Blackjack{
     assert _dealer.size() == 0;
     _handCount = 0;
     _dealerCount = 0;
+    if(_deck.size() < 26){
+      while(_discard.size() != 0){
+        _deck.add(_discard.get(0));
+        _discard.remove(0);
+      }
+      assert _discard.size() == 0;
+      shuffleDeck();
+    }
   }
   
   public void printMe(){
     System.out.println("Dealer's showing " + _dealerShowing);
-    System.out.println("You're at " + _handCount);
+    for(Card card : _dealer){
+      if(!card.equals(_hiddenCard))
+        System.out.print(card.value + " of " + card.suit + ";  ");
+    }
+    System.out.println("\nYou're at " + _handCount);
     for(Card card : _hand){
       System.out.print(card.value + " of " + card.suit + ";  ");
     }
@@ -186,7 +207,7 @@ public class Blackjack{
     for(Card card : _discard){
       System.out.print(card.value + " of " + card.suit + ";  ");
     }
-    System.out.println("\n\n");
+    System.out.println();
   }
   
   //used for dealer, which thinks independently of you
@@ -301,6 +322,7 @@ public class Blackjack{
       else if(me == State.WIN){
         System.out.println("\nYou won!\n");
       }
+      game.discard();
       game.debug();
       
       System.out.print("Do you want to play another round? ");
@@ -308,7 +330,6 @@ public class Blackjack{
       if(response.equals("y") || response.equals("yes")){
         me = State.START;
         dealer = State.START;
-        game.discard();
       }
     }
   }
