@@ -2,11 +2,11 @@ import java.util.*;
 
 /**
  * TODO:
- * Implement checkCards() return value in main()
+ * Implement checkCards, checkBust, checkWin etc in main()....
  */
 
 public class Blackjack{
-  public enum Status{ HIT, STAY, INVALID, BLACKJACK, WIN, LOSE }
+  public enum State{ HIT, STAY, BLACKJACK, WIN, LOSE, BUST, CONTINUE }
   public enum Suit{ SPADES, HEARTS, CLUBS, DIAMONDS }
   public enum Value{ ACE(1), TWO(2), THREE(3), FOUR(4), FIVE(5), SIX(6),
     SEVEN(7), EIGHT(8), NINE(9), TEN(10), JACK(10), QUEEN(10), KING(10);
@@ -36,6 +36,7 @@ public class Blackjack{
   private ArrayList<Card> _dealer; //dealer's Cards
   private int _handCount; // your card total
   private int _dealerCount; //dealer's card total
+  private State _roundState;
   
   /**
    * Initializes a game of blackjack.
@@ -56,6 +57,15 @@ public class Blackjack{
     _dealer = new ArrayList<Card>();
     _handCount = 0;
     _dealerCount = 0;
+    _roundState = State.CONTINUE;
+  }
+  
+  /**
+   * Sets the current round's play state.
+   * @param state the new play state
+   */
+  public void changeRoundState(State state){
+    _roundState = state;
   }
   
   /**
@@ -76,10 +86,6 @@ public class Blackjack{
     }
     _hand.add(card);
     _handCount += card.value.weight;
-    
-    if(reduceWeights()){
-      hitDealer();
-    }
     
     debug();
   }
@@ -130,33 +136,44 @@ public class Blackjack{
     return true;
   }
   
-  public Status checkCards(){
-    if(_dealerCount == 21 && _dealer.size() == 2){
-      return Status.LOSE;
-    }else if(_handCount == 21 && _hand.size() == 2){
-      return Status.BLACKJACK;
-    }else if(_handCount > 21){
-      return Status.LOSE;
+  /**
+   * Checks if either hand has bust, and changes state if so.
+   * @return true if either hand has bust, false otherwise.
+   */
+  public boolean checkBust(){
+    if(_handCount > 21){
+      _roundState = State.BUST;
+      return true;
     }else if(_dealerCount > 21){
-      return Status.WIN;
+      _roundState = State.WIN;
+      return true;
     }else{
-      return _handCount > _dealerCount ? Status.WIN : Status.LOSE;
+      return false;
+    }
+  }
+  
+  public State checkWin(){
+    if(_dealerCount == 21 && _dealer.size() == 2){
+      return State.LOSE;
+    }else if(_handCount == 21 && _hand.size() == 2){
+      return State.BLACKJACK;
+    }else if(_handCount > 21){
+      return State.BUST;
+    }else if(_dealerCount > 21){
+      return State.WIN;
+    }else{
+      return State.STAY;
     }
   }
   
   public void discard(){
-    Card card;
     while(_hand.size() != 0){
-      card = _hand.get(0);
-      _discard.add(card);
-      assert _discard.size() != 0;
-      _hand.remove(card);
+      _discard.add(_hand.get(0));
+      _hand.remove(0);
     }
     while(_dealer.size() != 0){
-      card = _dealer.get(0);
-      _discard.add(card);
-      assert _discard.size() != 0;
-      _dealer.remove(card);
+      _discard.add(_dealer.get(0));
+      _dealer.remove(0);
     }
     assert _hand.size() == 0;
     assert _dealer.size() == 0;
@@ -199,7 +216,8 @@ public class Blackjack{
   public static void main(String args[]){
     Scanner scanner = new Scanner(System.in);
     String response;
-    Status status;
+    State state;
+    State cardCheck;
     boolean playAgain;
     welcomeMessage();
     
@@ -208,21 +226,23 @@ public class Blackjack{
     do{
       playAgain = false;
       game.hitMe();
-      game.checkCards();
-      status = Status.HIT;
-      while(status != Status.STAY){
-        if(status == Status.HIT){
+      game.hitDealer();
+      cardCheck = game.checkWin();
+      state = State.HIT;
+      while(state != State.STAY){
+        if(state == State.HIT){
           game.hitMe();
           game.printCount();
         }
+        
         System.out.print("Would you like to hit? 'y' or 'n': ");
         response = scanner.next().toLowerCase();
         if(response.equals("y") || response.equals("yes")){
-          status = Status.HIT;
+          state = State.HIT;
         }else if(response.equals("n") || response.equals("no")){
-          status = Status.STAY;
+          state = State.STAY;
         }else{
-          status = Status.INVALID;
+          state = State.CONTINUE;
         }
       }
       
