@@ -1,14 +1,20 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Scanner;
 
-/**
+/*
  * TODO:
- * Add COMMENTS!
- * Build Javadoc.
- * Detailed win/lose stats.
  * Add betting system.
  * Add 'help' message.
+ * Add SPLIT feature.
  */
 
+/**
+ * A program for playing blackjack. Compiling and executing this
+ * program will begin a new game through the console.
+ * 
+ * @author Paul Lohmuller
+ */
 public class Blackjack{
   /**
    * The different states of play in this blackjack game.
@@ -25,6 +31,9 @@ public class Blackjack{
   
   /**
    * The thirteen card ranks. Each has a weight value for scoring.
+   * These are used for deck generation and card comparison. Rank
+   * weights can be modified (e.g. when an Ace with weight 11 drops
+   * to an Ace with weight 1 to prevent a bust).
    */
   public enum Rank{ ACE(1), TWO(2), THREE(3), FOUR(4), FIVE(5), SIX(6),
     SEVEN(7), EIGHT(8), NINE(9), TEN(10), JACK(10), QUEEN(10), KING(10);
@@ -57,6 +66,7 @@ public class Blackjack{
     /**
      * Overridden comparison method.
      * Compares cards by rank, then suit.
+     * @return true if equivalent, false otherwise
      */
     @Override
     public boolean equals(Object o){
@@ -186,7 +196,7 @@ public class Blackjack{
   /**
    * Puts all cards from your hand and the dealer's
    * hand into the discard pile. If more than half
-   * the deck has been discarded, then this shuffles
+   * the deck has been discarded, this shuffles
    * the discard pile back into the deck.
    */
   public void discard(){
@@ -198,8 +208,6 @@ public class Blackjack{
       _discard.add(_dealer.get(0));
       _dealer.remove(0);
     }
-    assert _hand.size() == 0;
-    assert _dealer.size() == 0;
     _handCount = 0;
     _dealerCount = 0;
     if(_deck.size() < 26){
@@ -207,7 +215,6 @@ public class Blackjack{
         _deck.add(_discard.get(0));
         _discard.remove(0);
       }
-      assert _discard.size() == 0;
       shuffleDeck();
     }
   }
@@ -239,7 +246,7 @@ public class Blackjack{
     System.out.println("| ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ |");
     System.out.println("| RULES:                                       |");
     System.out.println("| 1. Dealer draws to 16, and stands on all 17s |");
-    System.out.println("| 2. Blackjack pays 3 to 2                     |");
+    //System.out.println("| 2. Blackjack pays 3 to 2                     |");
     System.out.println("+----------------------------------------------+\n");
   }
   
@@ -249,21 +256,71 @@ public class Blackjack{
    * discard pile.
    */
   public void debug(){
-    System.out.println("--- YOUR HAND ---");
-    System.out.println("Your count is: " + _handCount);
+    System.out.println("| DEBUG");
+    System.out.println("| --- YOUR HAND ---");
+    System.out.println("| Your count is: " + _handCount);
+    System.out.print("| ");
     for(Card card : _hand){
       System.out.print(card.rank + " of " + card.suit + ";  ");
     }
-    System.out.println("\n\n--- DEALER'S HAND ---");
-    System.out.println("Dealer's count is: " + _dealerCount);
+    System.out.println("\n|\n| --- DEALER'S HAND ---");
+    System.out.println("| Dealer's count is: " + _dealerCount);
+    System.out.print("| ");
     for(Card card : _dealer){
       System.out.print(card.rank + " of " + card.suit + ";  ");
     }
-    System.out.println("\n\n--- DISCARD PILE ---");
+    System.out.println("\n|\n|  --- DISCARD PILE ---");
+    System.out.print("| ");
     for(Card card : _discard){
       System.out.print(card.rank + " of " + card.suit + ";  ");
     }
     System.out.println();
+  }
+  
+  /**
+   * Prints the final results of the hand. First
+   * it prints the dealer's score and hand, and then
+   * it prints your score and hand. It then states
+   * who won.
+   */
+  public void printResults(){
+    System.out.println("Final results:");
+    
+    //Print the scores and cards
+    System.out.println("Dealer's at " + _dealerCount);
+    for(Card card : _dealer){
+      System.out.print(card.rank + " of " + card.suit + ";  ");
+    }
+    System.out.println("\n\nYou're at " + _handCount);
+    for(Card card : _hand){
+      System.out.print(card.rank + " of " + card.suit + ";  ");
+    }
+    System.out.println();
+    
+    //Decide who won the game and print a unique message for each scenario
+    if(_handCount > 21){
+      System.out.println("You lose! You went over 21. That's called a bust. Hint: You don't want to do this.");
+    }else if(_dealerCount > 21){
+      System.out.println("You win! The dealer went over 21. Point your finger at the screen and laugh at it. You've earned it.");
+    }else if(_dealerCount == 21){
+      System.out.print("You lose! ");
+      if(_dealer.size() == 2){
+        System.out.println("Dealer has blackjack. The system must be rigged.");
+      }else{
+        System.out.println("Dealer has 21. Better luck next time...");
+      }
+    }else if(_handCount == 21){
+      System.out.print("You win! ");
+      if(_hand.size() == 2){
+        System.out.println("Blackjack! Way to go! Maybe you should quit while you're ahead.");
+      }else{
+        System.out.println("You have 21. The dealer didn't. You should be proud of yourself.");
+      }
+    }else if(_handCount <= _dealerCount){
+      System.out.println("You lose! You have less than the dealer. That's life.");
+    }else{
+      System.out.println("You win! You have more than the dealer. A small victory.");
+    }
   }
   
   /**
@@ -304,6 +361,7 @@ public class Blackjack{
         
       case WIN: //do nothing
         return State.WIN;
+        
       case BUST: //change state to LOSE
         return State.LOSE;
         
@@ -326,7 +384,7 @@ public class Blackjack{
       case START: //update to CONTINUE
         return updateMe(State.CONTINUE, dealer);
         
-      case CONTINUE: //do nothing
+      case CONTINUE:
         if(_hand.size() < 2){
           //this makes sure there are two cards in your hand when you start
           hitMe();
@@ -393,16 +451,15 @@ public class Blackjack{
       while(me == State.CONTINUE || me == State.STAY){
         dealer = game.updateDealer(dealer);
         me = game.updateMe(me, dealer);
-        game.printMe();
         
         if(me == State.CONTINUE){
+          game.printMe();
           //prompt user to HIT or STAY
           System.out.print("Do you want to hit? 'yes' or 'no': ");
           response = scanner.next().toLowerCase();
           if(response.equals("y") || response.equals("yes")){
             me = game.updateMe(State.HIT, dealer);
-          }
-          else{
+          }else{
             me = game.updateMe(State.STAY, dealer);
           }
         }
@@ -410,14 +467,9 @@ public class Blackjack{
       }
       
       //print the outcome
-      if(me == State.LOSE){
-        System.out.println("\nYou lost!\n");
-      }
-      else if(me == State.WIN){
-        System.out.println("\nYou won!\n");
-      }
+      game.printResults();
       game.discard();
-      game.debug();
+      //game.debug();
       
       //prompt for another hand, or quit
       System.out.print("Do you want to play another hand? ");
